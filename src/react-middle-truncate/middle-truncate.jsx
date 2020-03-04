@@ -133,9 +133,9 @@ class MiddleTruncate extends PureComponent {
     this.parseTextForTruncation(this.props.text);
   }
 
-  getTextMeasurement = ref => {
+  getTextMeasurement = (ref, textToMeasure) => {
     const node = findDOMNode(ref);
-    const text = node.textContent;
+    const text = textToMeasure || node.textContent;
 
     const {
       fontFamily,
@@ -168,6 +168,64 @@ class MiddleTruncate extends PureComponent {
     };
   }
 
+  getTextWidth(str) {
+    return this.getTextMeasurement(this.refs.text, str).width.value;
+  }
+
+  getTruncatedSideText({
+    side, // 'left' | 'right'
+    totalWidthAvailable,
+    letterWidthGuess,
+    minSideWidth,
+    requiredSubstring,
+    otherSideText = null
+  }) {
+    const otherSideReservedWidth =
+      otherSideText === null
+        ? totalWidthAvailable / 2
+        : this.getTextWidth(otherSideText);
+    const maxSideWidth = totalWidthAvailable - otherSideReservedWidth;
+    if (minSideWidth >= maxSideWidth) {
+      return requiredSubstring;
+    }
+    const sideLengthGuess =
+      otherSideText === null
+        ? Math.round(maxSideWidth / letterWidthGuess)
+        : otherSideText.length;
+    const { text } = this.props;
+    if (side === 'left') {
+      const { start } = this.state;
+      let leftSideEndIndex = Math.max(start, sideLengthGuess);
+      while (
+        this.getTextWidth(text.slice(0, leftSideEndIndex + 1)) <= maxSideWidth
+      ) {
+        leftSideEndIndex++;
+      }
+      while (
+        this.getTextWidth(text.slice(0, leftSideEndIndex)) > maxSideWidth
+      ) {
+        leftSideEndIndex--;
+      }
+      return text.slice(0, leftSideEndIndex);
+    }
+    if (side === 'right') {
+      const { end } = this.state;
+      let rightSideStartIndex = text.length - Math.max(end, sideLengthGuess);
+      while (
+        this.getTextWidth(text.slice(rightSideStartIndex - 1)) <= maxSideWidth
+      ) {
+        rightSideStartIndex--;
+      }
+      while (
+        this.getTextWidth(text.slice(rightSideStartIndex)) > maxSideWidth
+      ) {
+        rightSideStartIndex++;
+      }
+      return text.slice(rightSideStartIndex);
+    }
+    throw new Error('"side" argument must be "left" or "right"');
+  }
+
   calculateMeasurements() {
     return {
       component: this.getComponentMeasurement(),
@@ -180,20 +238,63 @@ class MiddleTruncate extends PureComponent {
     const { text, ellipsis } = this.props;
     const { start, end } = this.state;
 
-    if (measurements.component.width.value <= measurements.ellipsis.width.value) {
+    if (start + end >= text.length) {
+      return text;
+    }
+
+    if (
+      measurements.component.width.value <= measurements.ellipsis.width.value
+    ) {
       return ellipsis;
     }
 
-    const delta = Math.ceil(measurements.text.width.value - measurements.component.width.value);
-    const totalLettersToRemove = Math.ceil( delta / measurements.ellipsis.width.value);
-    const middleIndex = Math.round(text.length / 2);
+    const totalWidthAvailable =
+      measurements.component.width.value - measurements.ellipsis.width.value;
+    const letterWidthGuess = measurements.ellipsis.width.value;
 
-    const preserveLeftSide = text.slice(0, start);
-    const leftSide = text.slice(start, middleIndex - totalLettersToRemove);
-    const rightSide = text.slice(middleIndex + totalLettersToRemove, text.length - end);
-    const preserveRightSide = text.slice(text.length - end, text.length);
+    const requiredLeftSubstring = text.slice(0, start);
+    const minLeftSideWidth = this.getTextWidth(requiredLeftSubstring);
+    const requiredRightSubstring = text.slice(text.length - end, end);
+    const minRightSideWidth = this.getTextWidth(requiredRightSubstring);
 
-    return `${preserveLeftSide}${leftSide}${ellipsis}${rightSide}${preserveRightSide}`;
+    let leftSideText;
+    let rightSideText;
+
+    if (minLeftSideWidth > minRightSideWidth) {
+      leftSideText = this.getTruncatedSideText({
+        side: 'left',
+        totalWidthAvailable,
+        letterWidthGuess,
+        minSideWidth: minLeftSideWidth,
+        requiredSubstring: requiredLeftSubstring
+      });
+      rightSideText = this.getTruncatedSideText({
+        side: 'right',
+        totalWidthAvailable,
+        letterWidthGuess,
+        minSideWidth: minRightSideWidth,
+        requiredSubstring: requiredRightSubstring,
+        otherSideText: leftSideText
+      });
+    } else {
+      rightSideText = this.getTruncatedSideText({
+        side: 'right',
+        totalWidthAvailable,
+        letterWidthGuess,
+        minSideWidth: minRightSideWidth,
+        requiredSubstring: requiredRightSubstring
+      });
+      leftSideText = this.getTruncatedSideText({
+        side: 'left',
+        totalWidthAvailable,
+        letterWidthGuess,
+        minSideWidth: minLeftSideWidth,
+        requiredSubstring: requiredLeftSubstring,
+        otherSideText: rightSideText
+      });
+    }
+
+    return `${leftSideText}${ellipsis}${rightSideText}`;
   }
 
   parseTextForTruncation(text) {
