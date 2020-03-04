@@ -1,5 +1,10 @@
 # react-middle-truncate
 
+## ***NOTE:*** this fork contains a few improvements including:
+* An improved algorithm for finding the truncated string, guaranteed to take up maximal space in the allowed area
+* Overriden copy behavior should always work (previously triple-click selections did not work)
+* Karma tests were previously broken, but now run correctly
+
 [![][travis_img]][travis_url] [![][github_issues_img]][github_issues_url] [![github_forks_img]][github_forks_url] [![github_stars_img]][github_stars_url] [![][license_img]][license_url]
 
 A React component for intelligently truncating text in the middle of the string with an ellipsis. You can see the component in action in this [demo][url-demo].
