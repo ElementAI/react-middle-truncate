@@ -135,7 +135,9 @@ class MiddleTruncate extends PureComponent {
 
   getTextMeasurement = (ref, textToMeasure) => {
     const node = findDOMNode(ref);
-    const text = textToMeasure || node.textContent;
+    const text = typeof textToMeasure === 'string'
+      ? textToMeasure
+      : node.textContent;
 
     const {
       fontFamily,
@@ -253,9 +255,9 @@ class MiddleTruncate extends PureComponent {
     const letterWidthGuess = measurements.ellipsis.width.value;
 
     const requiredLeftSubstring = text.slice(0, start);
-    const minLeftSideWidth = this.getTextWidth(requiredLeftSubstring);
+    const minLeftSideWidth = start && this.getTextWidth(requiredLeftSubstring);
     const requiredRightSubstring = text.slice(text.length - end, end);
-    const minRightSideWidth = this.getTextWidth(requiredRightSubstring);
+    const minRightSideWidth = end && this.getTextWidth(requiredRightSubstring);
 
     let leftSideText;
     let rightSideText;
