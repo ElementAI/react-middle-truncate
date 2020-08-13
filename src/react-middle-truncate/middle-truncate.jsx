@@ -52,7 +52,8 @@ class MiddleTruncate extends PureComponent {
     smartCopy: PropTypes.oneOfType([PropTypes.oneOf(['partial', 'all']), PropTypes.bool]),
     start: PropTypes.oneOfType([PropTypes.number, PropTypes.instanceOf(RegExp), PropTypes.string]),
     style: PropTypes.object,
-    text: PropTypes.string
+    text: PropTypes.string,
+    disableRecalculateOnResize: PropTypes.bool
   };
 
   static defaultProps = {
@@ -63,7 +64,8 @@ class MiddleTruncate extends PureComponent {
     smartCopy: 'all',
     start: 0,
     style: {},
-    text: ''
+    text: '',
+    disableRecalculateOnResize: false
   };
 
   constructor(props) {
@@ -84,7 +86,9 @@ class MiddleTruncate extends PureComponent {
 
   componentDidMount() {
     this.parseTextForTruncation(this.props.text);
-    window.addEventListener('resize', this.onResize);
+    if (!this.props.disableRecalculateOnResize) {
+      window.addEventListener('resize', this.onResize);
+    }
   }
 
   componentWillReceiveProps(nextProps) {
@@ -98,6 +102,20 @@ class MiddleTruncate extends PureComponent {
 
     if (nextProps.end !== this.props.end) {
       this.setState({ end: getEndOffset(nextProps.end, nextProps.text) });
+    }
+  }
+
+  componentDidUpdate(prevProps) {
+    if (
+      prevProps.disableRecalculateOnResize &&
+      !this.props.disableRecalculateOnResize
+    ) {
+      window.addEventListener('resize', this.onResize);
+    } else if (
+      !prevProps.disableRecalculateOnResize &&
+      this.props.disableRecalculateOnResize
+    ) {
+      window.removeEventListener('resize', this.onResize);
     }
   }
 
